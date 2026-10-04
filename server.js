@@ -1,39 +1,31 @@
-const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
-require('dotenv').config();
-
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-// Product Schema & Model with Image Field
-const productSchema = new mongoose.Schema({
-  title: String,
-  price: Number,
-  description: String,
-  image: String,
+// User Schema
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, default: 'customer' }
 });
+const User = mongoose.model('User', userSchema);
 
-const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
+// Backend Login Endpoint
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
 
-// GET route for fetching all products
-app.get('/api/products', async (req, res) => {
   try {
-    const products = await Product.find({});
-    res.json(products);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching products', error: error.message });
+    const user = await User.findOne({ email });
+
+    if (!user || user.password !== password) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Return user details (without password)
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error during login' });
   }
 });
-
-// Connect to MongoDB Atlas and Start Server
-const MONGO_URI = process.env.MONGO_URI;
-
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log('MongoDB Live Connection Established Successfully!');
-    app.listen(5000, () => console.log('Server running on port 5000'));
-  })
-  .catch((err) => console.error('DB Connection Error:', err));
